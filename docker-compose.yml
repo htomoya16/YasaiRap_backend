@@ -1,0 +1,46 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: yasairap_mysql
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --init-connect=SET NAMES utf8mb4
+      - --character-set-filesystem=utf8mb4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: yasairap
+      MYSQL_USER: yasairap_user
+      MYSQL_PASSWORD: yasairap_password
+      TZ: UTC
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./config/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+    networks:
+      - yasairap_network
+
+  app:
+    build: .
+    container_name: yasairap_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=yasairap_user
+      - DB_PASSWORD=yasairap_password
+      - DB_NAME=yasairap
+    networks:
+      - yasairap_network
+
+volumes:
+  mysql_data:
+
+networks:
+  yasairap_network:
+    driver: bridge
