@@ -1,8 +1,7 @@
 env "local" {
     # 完成図（schema/配下の .sql/.hcl）
     src = "file://schema"
-    # 差分計画用の一時DB
-    dev-url = "docker://mysql/8.4"
+    dev = "docker://mysql/8.4/yasairap"
     
     # マイグレーション履歴の置き場
     migration {

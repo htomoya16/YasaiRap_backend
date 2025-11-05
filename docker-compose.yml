@@ -72,7 +72,6 @@ services:
       PORT: ${APP_PORT:-8080}
     ports:
       - "${APP_PORT:-8080}:8080"
-      - "${DLV_PORT:-40000}:40000"
     # airに必要 ボリュームをマウント
     volumes:
       - .:/app
