@@ -1,0 +1,13 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main ./cmd/server"
+bin = "tmp/main"
+# 監視対象（ホワイトリスト）
+include_dir = ["cmd","internal","pkg","database","config"]
+# 除外
+exclude_dir = ["tmp","vendor",".git","scripts"]
+exclude_regex = ["_test\\.go$"]
+# デバウンス時間
+delay = 1000
