@@ -43,6 +43,7 @@ services:
     depends_on:
       - mysql
     environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}
@@ -64,6 +65,7 @@ services:
     depends_on:
       - mysql
     environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}

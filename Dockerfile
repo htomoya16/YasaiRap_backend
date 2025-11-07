@@ -81,4 +81,4 @@ ENV CGO_ENABLED=0 \
 EXPOSE 8080 40000
 
 # ホットリロード起動
-CMD ["air"]
+CMD ["air", "-c", ".air.toml"]

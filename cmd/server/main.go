@@ -2,12 +2,14 @@ package main
 
 import (
 	"backend/database"
+	"backend/internal/discord"
 	"backend/internal/handler"
 	"backend/internal/repository"
 	"backend/internal/routes"
 	"backend/internal/service"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,6 +29,15 @@ func main() {
 	defer db.Close()
 
 	// DI
+	whitelistRepo := repository.NewWhitelistRepository(db)
+	dSession, err := discord.NewSession()
+	if err != nil {
+		panic("Failed to create discord session: " + err.Error())
+	}
+	discordSevice := service.NewDiscordService(whitelistRepo, dSession)
+	discordHandler := handler.NewDiscordHandler(discordSevice)
+	discord.RegisterMessageCreate(dSession, discordSevice.HandlePing)
+
 	healthRepo := repository.NewHealthRepository(db)
 	healthSevice := service.NewHealthService(healthRepo)
 	healthHandler := handler.NewHealthHandler(healthSevice)
@@ -47,7 +58,7 @@ func main() {
 	)
 
 	// ルート設定
-	routes.SetupRoutes(e, healthHandler)
+	routes.SetupRoutes(e, healthHandler, discordHandler)
 
 	// ポート設定
 	port := os.Getenv("PORT")
@@ -78,9 +89,23 @@ func main() {
 
 	// ---- server start & wait for signal ----
 	// サーバ起動結果（エラー）を受け取るためのチャネルを用意する（バッファ1で送信ブロックを避ける）
-	errCh := make(chan error, 1)
+	// Discord分も見たいので容量2に
+	errCh := make(chan error, 2)
+
 	// サーバを別ゴルーチンで起動する
 	go func() { errCh <- e.StartServer(srv) }()
+
+	// Discordセッション
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := dSession.Start(ctx); err != nil {
+			errCh <- err
+		}
+	}()
+
+	// Discord Botが立ち上がったログ
+	fmt.Printf("startup complete: http=:%s, discord=online\n", port)
 
 	// OSシグナル（Ctrl+C の SIGINT と SIGTERM）を受けると自動で Done になるコンテキストを作る
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -93,7 +118,7 @@ func main() {
 		e.Logger.Info("Server is shutting down...")
 	case err := <-errCh:
 		// サーバ起動側が先に戻った（起動失敗 or 正常終了）
-		if !errors.Is(err, http.ErrServerClosed) {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			// それ以外はポート競合などの致命的な起動失敗とみなして落とす
 			e.Logger.Fatal(err)
 		}
@@ -114,6 +139,11 @@ func main() {
 		if cerr := e.Close(); cerr != nil {
 			e.Logger.Error(cerr)
 		}
+	}
+
+	// Discordを閉じる（WebSocket切断）
+	if err := dSession.Close(); err != nil {
+		e.Logger.Error("discord close:", err)
 	}
 
 	// DBはここで閉じる（全リクエスト完了後）

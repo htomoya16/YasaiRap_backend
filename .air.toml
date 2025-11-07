@@ -2,12 +2,27 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/main ./cmd/server"
+cmd = "go build -o tmp/main ./cmd/server"
 bin = "tmp/main"
-# 監視対象（ホワイトリスト）
-include_dir = ["cmd","internal","pkg","database","config"]
-# 除外
-exclude_dir = ["tmp","vendor",".git","scripts"]
+
+include_dir = ["cmd", "internal", "config", "database"]
+include_ext = ["go", "mod", "sum", "yml", "yaml", "tpl", "tmpl", "html"]
+
+exclude_dir = ["tmp", "vendor", ".git", "migrations", "schema", "scripts"]
 exclude_regex = ["_test\\.go$"]
-# デバウンス時間
-delay = 1000
+
+delay = 500
+stop_on_error = true
+poll = true
+
+[log]
+time = true
+main_only = false
+silent = false
+
+[misc]
+clean_on_exit = true
+
+[screen]
+clear_on_rebuild = true
+keep_scroll = true
