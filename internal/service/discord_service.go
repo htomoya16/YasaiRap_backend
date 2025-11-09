@@ -42,8 +42,10 @@ func (s *discordService) HandlePing(ctx context.Context, channelID, userID strin
 }
 
 func (s *discordService) AddWhitelist(ctx context.Context, userID, note string) error {
-	return s.whitelist.Add(ctx, models.DiscordWhitelist{
-		Platform: "discord", UserID: userID, Note: note,
+	return s.whitelist.Add(ctx, models.Whitelist{
+		Platform: "discord",
+		UserID:   userID,
+		Note:     note,
 	})
 }
 

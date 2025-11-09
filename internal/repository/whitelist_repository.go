@@ -1,3 +1,4 @@
+// internal/repository/whitelist.go
 package repository
 
 import (
@@ -7,22 +8,25 @@ import (
 )
 
 type WhitelistRepository interface {
-	Add(ctx context.Context, w models.DiscordWhitelist) error
+	Add(ctx context.Context, w models.Whitelist) error
 	Remove(ctx context.Context, platform, userID string) error
 	Exists(ctx context.Context, platform, userID string) (bool, error)
-	List(ctx context.Context, platform string, limit, offset int) ([]models.DiscordWhitelist, error)
+	List(ctx context.Context, platform string, limit, offset int) ([]models.Whitelist, error)
 }
 
-type whitelistRepository struct{ db *sql.DB }
+type whitelistRepository struct {
+	db *sql.DB
+}
 
 func NewWhitelistRepository(db *sql.DB) WhitelistRepository {
 	return &whitelistRepository{db: db}
 }
 
-func (r *whitelistRepository) Add(ctx context.Context, w models.DiscordWhitelist) error {
+func (r *whitelistRepository) Add(ctx context.Context, w models.Whitelist) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO whitelist (platform, user_id, note, created_at)
-		 VALUES (?, ?, ?, UNIX_TIMESTAMP())`,
+		`INSERT INTO whitelists (platform, user_id, note)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE note = VALUES(note)`,
 		w.Platform, w.UserID, w.Note,
 	)
 	return err
@@ -30,39 +34,45 @@ func (r *whitelistRepository) Add(ctx context.Context, w models.DiscordWhitelist
 
 func (r *whitelistRepository) Remove(ctx context.Context, platform, userID string) error {
 	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM whitelist WHERE platform=? AND user_id=?`, platform, userID)
+		`DELETE FROM whitelists WHERE platform = ? AND user_id = ?`,
+		platform, userID,
+	)
 	return err
 }
 
 func (r *whitelistRepository) Exists(ctx context.Context, platform, userID string) (bool, error) {
-	row := r.db.QueryRowContext(ctx,
-		`SELECT 1 FROM whitelist WHERE platform=? AND user_id=? LIMIT 1`, platform, userID)
-	var x int
-	if err := row.Scan(&x); err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
+	var dummy int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT 1 FROM whitelists WHERE platform = ? AND user_id = ? LIMIT 1`,
+		platform, userID,
+	).Scan(&dummy)
+
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (r *whitelistRepository) List(ctx context.Context, platform string, limit, offset int) ([]models.DiscordWhitelist, error) {
+func (r *whitelistRepository) List(ctx context.Context, platform string, limit, offset int) ([]models.Whitelist, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, platform, user_id, note, created_at
-		   FROM whitelist
-		  WHERE platform=?
+		   FROM whitelists
+		  WHERE platform = ?
 		  ORDER BY id DESC
-		  LIMIT ? OFFSET ?`, platform, limit, offset,
+		  LIMIT ? OFFSET ?`,
+		platform, limit, offset,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.DiscordWhitelist
+	var out []models.Whitelist
 	for rows.Next() {
-		var w models.DiscordWhitelist
+		var w models.Whitelist
 		if err := rows.Scan(&w.ID, &w.Platform, &w.UserID, &w.Note, &w.CreatedAt); err != nil {
 			return nil, err
 		}
