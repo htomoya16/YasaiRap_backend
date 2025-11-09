@@ -2,25 +2,34 @@ package discord
 
 import "github.com/bwmarrin/discordgo"
 
-// Commands はこのBotで使う全てのスラッシュコマンド定義を返す。
-func Commands() []*discordgo.ApplicationCommand {
-	return []*discordgo.ApplicationCommand{
-		{
-			Name:        "ping",
-			Description: "Check if the bot is alive.",
-		},
-		// ここに今後 /tournament /beat /cypher を足していく:
-		// {
-		// 	Name:        "tournament",
-		// 	Description: "Tournament operations",
-		// 	Options: []*discordgo.ApplicationCommandOption{
-		// 		{
-		// 			Type:        discordgo.ApplicationCommandOptionSubCommand,
-		// 			Name:        "create",
-		// 			Description: "Create a new tournament",
-		// 		},
-		// 		// ...
-		// 	},
-		// },
-	}
+// CommandName は Slash Command 名の型
+type CommandName string
+
+// コマンド名一覧（ここだけ見ればOK）
+const (
+	CommandPing CommandName = "ping"
+	// CommandTournament CommandName = "tournament"
+	// CommandCypher     CommandName = "cypher"
+	// CommandBeat       CommandName = "beat"
+)
+
+// CommandDef は 1コマンド分の定義
+type CommandDef struct {
+	Name        CommandName
+	Description string
+	Options     []*discordgo.ApplicationCommandOption
+}
+
+// Commands は登録対象のコマンド一覧
+// → ApplicationCommandCreate 時にも、ハンドラ側の分岐にもこれを使う。
+var Commands = []CommandDef{
+	{
+		Name:        CommandPing,
+		Description: "Botの疎通確認を行う。",
+	},
+	// 将来的な拡張:
+	// {
+	// 	Name:        CommandTournament,
+	// 	Description: "大会関連の操作を行う。",
+	// },
 }

@@ -88,6 +88,7 @@ func main() {
 
 	var dSession discord.Session
 	if discordToken != "" {
+		// session.go でdiscordgo.Sessionを組み立てる
 		s, err := discord.NewSession(discordToken)
 		if err != nil {
 			e.Logger.Fatal("failed to init discord session: ", err)
@@ -112,6 +113,7 @@ func main() {
 
 	// Discord起動
 	if dSession != nil {
+		// DI
 		router := discord.NewRouter(whitelistService)
 		dSession.AddHandler(router.HandleInteraction)
 
@@ -119,6 +121,7 @@ func main() {
 			ctxStart, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
+			// session.go でGatewayに接続
 			if err := dSession.Start(ctxStart); err != nil {
 				errCh <- fmt.Errorf("discord start: %w", err)
 				return
@@ -127,6 +130,7 @@ func main() {
 			ctxCmd, cancelCmd := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelCmd()
 
+			// session.go でコマンド登録
 			if err := dSession.RegisterCommands(ctxCmd, discordAppID, discordGuildID); err != nil {
 				errCh <- fmt.Errorf("discord register commands: %w", err)
 				return

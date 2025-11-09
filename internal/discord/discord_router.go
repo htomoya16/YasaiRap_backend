@@ -6,7 +6,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// Router は Discord の Interaction を各ハンドラに振り分ける役割。
+// Router は Discord の Interaction を各処理に振り分ける役割。
 type Router struct {
 	WhitelistService service.WhitelistService
 	// TournamentService service.TournamentService
@@ -14,8 +14,7 @@ type Router struct {
 	// BeatService       service.BeatService
 }
 
-// NewRouter で必要な service を全部 DI しておく。
-// まだトーナメント等が未実装なら WhitelistService だけでもOK。
+// NewRouter で必要な service を DI。
 func NewRouter(
 	whitelistService service.WhitelistService,
 	// tournamentService service.TournamentService,
@@ -31,29 +30,30 @@ func NewRouter(
 }
 
 // HandleInteraction は discordgo のイベントハンドラとして登録される入口。
-// main.go 側で session.AddHandler(router.HandleInteraction) する想定。
+// main.go 側で: session.AddHandler(router.HandleInteraction)
 func (r *Router) HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	// Slash Command 以外は今は無視
+	// Slash Command 以外は無視
 	if i.Type != discordgo.InteractionApplicationCommand {
 		return
 	}
 
 	data := i.ApplicationCommandData()
+	cmd := CommandName(data.Name)
 
-	switch data.Name {
-	case "ping":
-		// /ping
+	switch cmd {
+	case CommandPing:
 		r.handlePing(s, i)
 
-	// 将来的な拡張 (コメントアウトしておいてOK)
-	// case "tournament":
+	// 将来こんな感じで増やす:
+	// case CommandTournament:
 	// 	r.handleTournament(s, i)
-	// case "cypher":
+	// case CommandCypher:
 	// 	r.handleCypher(s, i)
-	// case "beat":
+	// case CommandBeat:
 	// 	r.handleBeat(s, i)
+
 	default:
-		// 未対応コマンドはとりあえず無視 or ログに出すくらいでOK
+		// 未対応コマンド: ここでログ出したければ出す
 		return
 	}
 }
