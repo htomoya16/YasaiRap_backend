@@ -1,4 +1,4 @@
-package models
+package domain
 
 type HealthReport struct {
 	Live    bool   `json:"live"`

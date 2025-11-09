@@ -44,6 +44,8 @@ services:
       - mysql
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}
@@ -66,6 +68,8 @@ services:
       - mysql
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}

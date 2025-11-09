@@ -2,10 +2,9 @@ package main
 
 import (
 	"backend/database"
+	"backend/internal/api"
 	"backend/internal/discord"
-	"backend/internal/handler"
 	"backend/internal/repository"
-	"backend/internal/routes"
 	"backend/internal/service"
 	"context"
 	"errors"
@@ -30,17 +29,12 @@ func main() {
 
 	// DI
 	whitelistRepo := repository.NewWhitelistRepository(db)
-	dSession, err := discord.NewSession()
-	if err != nil {
-		panic("Failed to create discord session: " + err.Error())
-	}
-	discordSevice := service.NewDiscordService(whitelistRepo, dSession)
-	discordHandler := handler.NewDiscordHandler(discordSevice)
-	discord.RegisterMessageCreate(dSession, discordSevice.HandlePing)
+	whitelistService := service.NewWhitelistService(whitelistRepo)
+	whitelistHandler := api.NewWhitelistHandler(whitelistService)
 
 	healthRepo := repository.NewHealthRepository(db)
 	healthSevice := service.NewHealthService(healthRepo)
-	healthHandler := handler.NewHealthHandler(healthSevice)
+	healthHandler := api.NewHealthHandler(healthSevice)
 
 	// Echo インスタンスを作成
 	e := echo.New()
@@ -58,7 +52,7 @@ func main() {
 	)
 
 	// ルート設定
-	routes.SetupRoutes(e, healthHandler, discordHandler)
+	api.SetupRoutes(e, healthHandler, whitelistHandler)
 
 	// ポート設定
 	port := os.Getenv("PORT")
@@ -87,25 +81,62 @@ func main() {
 		}
 	}()
 
+	// ========= Discord セッション準備 =========
+	discordToken := os.Getenv("DISCORD_TOKEN")
+	discordAppID := os.Getenv("DISCORD_APP_ID")
+	discordGuildID := os.Getenv("DISCORD_GUILD_ID") // dev中は Guild 指定推奨
+
+	var dSession discord.Session
+	if discordToken != "" {
+		s, err := discord.NewSession(discordToken)
+		if err != nil {
+			e.Logger.Fatal("failed to init discord session: ", err)
+		}
+		dSession = s
+	} else {
+		e.Logger.Warn("DISCORD_TOKEN not set: discord bot disabled")
+	}
+
 	// ---- server start & wait for signal ----
 	// サーバ起動結果（エラー）を受け取るためのチャネルを用意する（バッファ1で送信ブロックを避ける）
 	// Discord分も見たいので容量2に
 	errCh := make(chan error, 2)
 
 	// サーバを別ゴルーチンで起動する
-	go func() { errCh <- e.StartServer(srv) }()
-
-	// Discordセッション
+	// HTTPサーバ起動
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := dSession.Start(ctx); err != nil {
+		if err := e.StartServer(srv); err != nil {
 			errCh <- err
 		}
 	}()
 
-	// Discord Botが立ち上がったログ
-	fmt.Printf("startup complete: http=:%s, discord=online\n", port)
+	// Discord起動
+	if dSession != nil {
+		router := discord.NewRouter(whitelistService)
+		dSession.AddHandler(router.HandleInteraction)
+
+		go func() {
+			ctxStart, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			if err := dSession.Start(ctxStart); err != nil {
+				errCh <- fmt.Errorf("discord start: %w", err)
+				return
+			}
+
+			ctxCmd, cancelCmd := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelCmd()
+
+			if err := dSession.RegisterCommands(ctxCmd, discordAppID, discordGuildID); err != nil {
+				errCh <- fmt.Errorf("discord register commands: %w", err)
+				return
+			}
+
+			fmt.Printf("startup complete: http=:%s, discord=online\n", port)
+		}()
+	} else {
+		fmt.Printf("startup complete: http=:%s, discord=disabled\n", port)
+	}
 
 	// OSシグナル（Ctrl+C の SIGINT と SIGTERM）を受けると自動で Done になるコンテキストを作る
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

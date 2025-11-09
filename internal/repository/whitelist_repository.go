@@ -1,17 +1,16 @@
-// internal/repository/whitelist.go
 package repository
 
 import (
-	"backend/internal/models"
+	"backend/internal/domain"
 	"context"
 	"database/sql"
 )
 
 type WhitelistRepository interface {
-	Add(ctx context.Context, w models.Whitelist) error
+	Add(ctx context.Context, w domain.Whitelist) error
 	Remove(ctx context.Context, platform, userID string) error
 	Exists(ctx context.Context, platform, userID string) (bool, error)
-	List(ctx context.Context, platform string, limit, offset int) ([]models.Whitelist, error)
+	List(ctx context.Context, platform string, limit, offset int) ([]domain.Whitelist, error)
 }
 
 type whitelistRepository struct {
@@ -22,7 +21,7 @@ func NewWhitelistRepository(db *sql.DB) WhitelistRepository {
 	return &whitelistRepository{db: db}
 }
 
-func (r *whitelistRepository) Add(ctx context.Context, w models.Whitelist) error {
+func (r *whitelistRepository) Add(ctx context.Context, w domain.Whitelist) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO whitelists (platform, user_id, note)
          VALUES (?, ?, ?)
@@ -56,7 +55,7 @@ func (r *whitelistRepository) Exists(ctx context.Context, platform, userID strin
 	return true, nil
 }
 
-func (r *whitelistRepository) List(ctx context.Context, platform string, limit, offset int) ([]models.Whitelist, error) {
+func (r *whitelistRepository) List(ctx context.Context, platform string, limit, offset int) ([]domain.Whitelist, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, platform, user_id, note, created_at
 		   FROM whitelists
@@ -70,9 +69,9 @@ func (r *whitelistRepository) List(ctx context.Context, platform string, limit, 
 	}
 	defer rows.Close()
 
-	var out []models.Whitelist
+	var out []domain.Whitelist
 	for rows.Next() {
-		var w models.Whitelist
+		var w domain.Whitelist
 		if err := rows.Scan(&w.ID, &w.Platform, &w.UserID, &w.Note, &w.CreatedAt); err != nil {
 			return nil, err
 		}
