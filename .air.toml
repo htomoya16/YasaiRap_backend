@@ -9,6 +9,7 @@ include_dir = ["cmd", "internal", "config", "database"]
 include_ext = ["go", "mod", "sum", "yml", "yaml", "tpl", "tmpl", "html"]
 
 exclude_dir = ["tmp", "vendor", ".git", "migrations", "schema", "scripts"]
+exclude_file = ["README.md"]
 exclude_regex = ["_test\\.go$"]
 
 delay = 500
