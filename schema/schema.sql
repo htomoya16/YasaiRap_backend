@@ -207,15 +207,15 @@ CREATE TABLE `vrc_registration_events` (
   CONSTRAINT `fk_vrc_ev_reg` FOREIGN KEY (`registration_id`) REFERENCES `vrc_registrations` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- Create "whitelists" table
-CREATE TABLE whitelists (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  platform ENUM('discord', 'vrc') NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
-  note VARCHAR(255) NOT NULL DEFAULT '',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_platform_user (platform, user_id)
-) ENGINE=InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+CREATE TABLE `whitelists` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `platform` enum('discord','vrc') NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `note` varchar(255) NOT NULL DEFAULT "",
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uq_platform_user` (`platform`, `user_id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- Create "whitelist_items" table
 CREATE TABLE `whitelist_items` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -227,3 +227,15 @@ CREATE TABLE `whitelist_items` (
   UNIQUE INDEX `uq_whitelist_item` (`whitelist_id`, `vrc_name_norm`),
   CONSTRAINT `fk_wli_whitelist` FOREIGN KEY (`whitelist_id`) REFERENCES `whitelists` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+CREATE VIEW v_discord_vrc_whitelist AS
+SELECT
+    w.id          AS whitelist_id,
+    w.user_id     AS discord_id,
+    wi.vrc_name   AS vrc_name,
+    wi.vrc_name_norm
+FROM whitelists w
+JOIN whitelist_items wi
+  ON wi.whitelist_id = w.id
+WHERE
+    w.platform = 'discord';

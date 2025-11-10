@@ -10,4 +10,7 @@ env "local" {
     }
     # 実際に適用する接続先
     url = "mysql://yasairap_user:yasairap_password@localhost:3306/yasairap"
+    exclude = [
+        "atlas_schema_revisions",
+    ]
 }
