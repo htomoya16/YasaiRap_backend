@@ -1,4 +1,4 @@
-package domain
+package models
 
 type Whitelist struct {
 	ID        uint64 `db:"id"`

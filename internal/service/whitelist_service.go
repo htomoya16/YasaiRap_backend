@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"backend/internal/domain"
+	"backend/internal/models"
 	"backend/internal/repository"
 )
 
@@ -22,7 +22,7 @@ func NewWhitelistService(r repository.WhitelistRepository) WhitelistService {
 }
 
 func (s *whitelistService) Add(ctx context.Context, platform, userID, note string) error {
-	return s.repo.Add(ctx, domain.Whitelist{
+	return s.repo.Add(ctx, models.Whitelist{
 		Platform: platform,
 		UserID:   userID,
 		Note:     note,
