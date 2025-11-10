@@ -19,6 +19,7 @@ const (
 	modalInputVRCName      = "wl_modal_input_vrc_name"
 )
 
+// discord IDの取得
 func extractUserID(i *discordgo.InteractionCreate) string {
 	if i.Member != nil && i.Member.User != nil {
 		return i.Member.User.ID
@@ -102,24 +103,33 @@ func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discor
 		vrcField = "- " + strings.Join(names, "\n- ")
 	}
 
+	fields := []*discordgo.MessageEmbedField{
+		{
+			Name:  "ステータス",
+			Value: status,
+		},
+	}
+
+	// Discord ID欄を状態で出し分け
+	discordValue := "なし"
+	if allowed {
+		discordValue = "<@" + discordID + ">"
+	}
+	fields = append(fields, &discordgo.MessageEmbedField{
+		Name:  "Discord ID",
+		Value: discordValue,
+	})
+
+	fields = append(fields, &discordgo.MessageEmbedField{
+		Name:  "紐づいているVRChat名",
+		Value: vrcField,
+	})
+
 	return &discordgo.MessageEmbed{
 		Title:       "ホワイトリスト状態",
 		Description: "このDiscordアカウントのホワイトリスト登録状況。",
 		Color:       color,
-		Fields: []*discordgo.MessageEmbedField{
-			{
-				Name:  "ステータス",
-				Value: status,
-			},
-			{
-				Name:  "Discord ID",
-				Value: discordID,
-			},
-			{
-				Name:  "紐づいているVRChat名",
-				Value: vrcField,
-			},
-		},
+		Fields:      fields,
 	}
 }
 

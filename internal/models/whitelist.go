@@ -1,23 +1,13 @@
 package models
 
-type WhitelistPlatform string
+import "time"
 
-const (
-	WhitelistPlatformDiscord WhitelistPlatform = "discord"
-	WhitelistPlatformVRC     WhitelistPlatform = "vrc"
-)
-
-type Whitelist struct {
-	ID       uint64
-	Platform WhitelistPlatform
-	UserID   string // Discord ID など
-	Note     string
-	// CreatedAt は必要なら追加
-}
-
-type WhitelistItem struct {
-	ID          uint64
-	WhitelistID uint64
-	VRCName     string
-	VRCNameNorm string
+type WhitelistUser struct {
+	ID             uint64
+	DiscordUserID  string
+	VRCUserID      string
+	VRCDisplayName string
+	Note           string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
