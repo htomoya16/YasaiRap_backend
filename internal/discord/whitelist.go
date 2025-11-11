@@ -158,9 +158,8 @@ func buildWhitelistEmbed(
 		},
 		Fields: []*discordgo.MessageEmbedField{
 			{
-				Name:   "ステータス",
-				Value:  statusValue,
-				Inline: true,
+				Name:  "ステータス",
+				Value: statusValue,
 			},
 			{
 				Name:   "Discord",
@@ -168,8 +167,9 @@ func buildWhitelistEmbed(
 				Inline: true,
 			},
 			{
-				Name:  "紐づいている VRChat 名",
-				Value: vrcField,
+				Name:   "紐づいている VRChat 名",
+				Value:  vrcField,
+				Inline: true,
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
