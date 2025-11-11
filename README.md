@@ -227,11 +227,14 @@ VRChat API の認証情報（`VRCHAT_USERNAME`, `VRCHAT_PASSWORD`, `VRCHAT_TOTP_
 Discord 側から `/whitelist` コマンドを実行して、Bot とバックエンドが正常に連携しているか確認できる。
 
 1. **Discordサーバーで `/whitelist` コマンドを入力**
+
    ![alt text](/images/image-2.png)
 
 2. **Botの応答を確認**
+
    ![alt text](/images/image-3.png)
 
 3. **登録できるか確認**
    自分のVRChat名で登録できるか確認
+   
    ![alt text](/images/image-4.png)
