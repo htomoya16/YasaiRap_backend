@@ -7,7 +7,8 @@ type CommandName string
 
 // コマンド名一覧（ここだけ見ればOK）
 const (
-	CommandPing CommandName = "ping"
+	CommandPing      CommandName = "ping"
+	CommandWhitelist CommandName = "whitelist"
 	// CommandTournament CommandName = "tournament"
 	// CommandCypher     CommandName = "cypher"
 	// CommandBeat       CommandName = "beat"
@@ -26,6 +27,10 @@ var Commands = []CommandDef{
 	{
 		Name:        CommandPing,
 		Description: "Botの疎通確認を行う。",
+	},
+	{
+		Name:        CommandWhitelist,
+		Description: "自分のホワイトリスト状態を確認・編集する。",
 	},
 	// 将来的な拡張:
 	// {

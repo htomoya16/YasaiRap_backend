@@ -1,9 +1,9 @@
 package api
 
 import (
-	"net/http"
-
 	"backend/internal/service"
+	"errors"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
@@ -16,42 +16,80 @@ func NewWhitelistHandler(s service.WhitelistService) *WhitelistHandler {
 	return &WhitelistHandler{svc: s}
 }
 
-func (h *WhitelistHandler) Add(c echo.Context) error {
-	type req struct {
-		UserID string `json:"user_id"`
-		Note   string `json:"note"`
+// Discord ID と VRC displayName を受け取り、
+// VRChat APIで完全一致ユーザーを検索して whitelist_users に登録/更新する。
+func (h *WhitelistHandler) RegisterDiscordVRC(c echo.Context) error {
+	type RegisterDiscordVRCRequest struct {
+		DiscordUserID  string `json:"discord_user_id"`
+		VRCDisplayName string `json:"vrc_display_name"`
 	}
-	var r req
 
+	var r RegisterDiscordVRCRequest
+	// 400
 	if err := c.Bind(&r); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json: "+err.Error())
 	}
-	if r.UserID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "userID required")
-	}
-
-	// Discord用のホワイトリストなので platform を "discord" で固定
-	if err := h.svc.Add(c.Request().Context(), "discord", r.UserID, r.Note); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	// 400
+	if r.DiscordUserID == "" || r.VRCDisplayName == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "discord_user_id and vrc_display_name are required")
 	}
 
-	return c.NoContent(http.StatusCreated)
+	created, err := h.svc.RegisterDiscordVRC(
+		c.Request().Context(),
+		r.DiscordUserID,
+		r.VRCDisplayName,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidArgument):
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid argument")
+		case errors.Is(err, service.ErrNoExactMatch):
+			// VRChat Search All Users に完全一致が無かった
+			return echo.NewHTTPError(http.StatusBadRequest, "no exact-matched vrchat user found for given display name")
+		case errors.Is(err, service.ErrMultipleExactMatch):
+			// 同じdisplayNameのユーザーが複数いて特定できない
+			return echo.NewHTTPError(http.StatusBadRequest, "multiple vrchat users found with same display name")
+		case errors.Is(err, service.ErrAlreadyExists):
+			// その VRC userId は別のDiscordユーザーに既に紐づいている
+			return echo.NewHTTPError(http.StatusConflict, "vrchat account already linked to another discord user")
+		default:
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+	}
+
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+
+	// 必要に応じて情報返したいならここで JSON 返す
+	// （今は最低限フラグだけ）
+	return c.JSON(status, map[string]any{
+		"created": created,
+	})
 }
 
-func (h *WhitelistHandler) Remove(c echo.Context) error {
-	type req struct {
-		UserID string `json:"user_id"`
+// 指定Discordユーザーの紐付け解除
+func (h *WhitelistHandler) RemoveDiscordVRC(c echo.Context) error {
+	type RemoveDiscordVRCRequest struct {
+		DiscordUserID string `json:"discord_user_id"`
 	}
-	var r req
 
+	var r RemoveDiscordVRCRequest
 	if err := c.Bind(&r); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json: "+err.Error())
 	}
-	if r.UserID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "userID required")
+	if r.DiscordUserID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "discord_user_id is required")
 	}
 
-	if err := h.svc.Remove(c.Request().Context(), "discord", r.UserID); err != nil {
+	if err := h.svc.RemoveDiscord(
+		c.Request().Context(),
+		r.DiscordUserID,
+	); err != nil {
+		if errors.Is(err, service.ErrInvalidArgument) {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid argument")
+		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 

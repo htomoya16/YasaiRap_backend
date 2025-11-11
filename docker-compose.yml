@@ -43,9 +43,15 @@ services:
     depends_on:
       - mysql
     environment:
+      # Discord bot用
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APP_ID: ${DISCORD_APP_ID}
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      # VRCHAT API用
+      YASAIRAP_CONTACT_EMAIL: ${YASAIRAP_CONTACT_EMAIL}
+      VRCHAT_USERNAME: ${VRCHAT_USERNAME}
+      VRCHAT_PASSWORD: ${VRCHAT_PASSWORD}
+      VRCHAT_TOTP_SECRET: ${VRCHAT_TOTP_SECRET}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}
@@ -67,9 +73,15 @@ services:
     depends_on:
       - mysql
     environment:
+      # Discord bot用
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APP_ID: ${DISCORD_APP_ID}
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      # VRCHAT API用
+      YASAIRAP_CONTACT_EMAIL: ${YASAIRAP_CONTACT_EMAIL}
+      VRCHAT_USERNAME: ${VRCHAT_USERNAME}
+      VRCHAT_PASSWORD: ${VRCHAT_PASSWORD}
+      VRCHAT_TOTP_SECRET: ${VRCHAT_TOTP_SECRET}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${MYSQL_USER}

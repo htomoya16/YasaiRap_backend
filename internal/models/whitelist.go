@@ -1,9 +1,14 @@
 package models
 
-type Whitelist struct {
-	ID        uint64 `db:"id"`
-	Platform  string `db:"platform"`
-	UserID    string `db:"user_id"`
-	Note      string `db:"note"`
-	CreatedAt string `db:"created_at"`
+import "time"
+
+type WhitelistUser struct {
+	ID             uint64
+	DiscordUserID  string
+	VRCUserID      string
+	VRCDisplayName string
+	VRCAvatarURL   string
+	Note           string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }

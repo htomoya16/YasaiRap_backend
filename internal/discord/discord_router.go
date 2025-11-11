@@ -32,28 +32,23 @@ func NewRouter(
 // HandleInteraction は discordgo のイベントハンドラとして登録される入口。
 // main.go 側で: session.AddHandler(router.HandleInteraction)
 func (r *Router) HandleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	// Slash Command 以外は無視
-	if i.Type != discordgo.InteractionApplicationCommand {
-		return
-	}
+	switch i.Type {
 
-	data := i.ApplicationCommandData()
-	cmd := CommandName(data.Name)
+	case discordgo.InteractionApplicationCommand:
+		data := i.ApplicationCommandData()
+		cmd := CommandName(data.Name)
 
-	switch cmd {
-	case CommandPing:
-		r.handlePing(s, i)
+		switch cmd {
+		case CommandPing:
+			r.handlePing(s, i)
+		case CommandWhitelist:
+			r.handleWhitelistPanel(s, i)
+		}
 
-	// 将来こんな感じで増やす:
-	// case CommandTournament:
-	// 	r.handleTournament(s, i)
-	// case CommandCypher:
-	// 	r.handleCypher(s, i)
-	// case CommandBeat:
-	// 	r.handleBeat(s, i)
+	case discordgo.InteractionMessageComponent:
+		r.handleWhitelistComponent(s, i)
 
-	default:
-		// 未対応コマンド: ここでログ出したければ出す
-		return
+	case discordgo.InteractionModalSubmit:
+		r.handleWhitelistModalSubmit(s, i)
 	}
 }
