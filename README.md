@@ -176,8 +176,17 @@ YasaiRap Backend が VRChat API にアクセスする際には、**自動ログ�
 
 このため、**運営専用のVRChatアカウントを新規に作成**することを強く推奨する。
 
+また、VRChat の二段階認証 (2FA) は、**Google Authenticator** などの TOTP（Time-based One-Time Password）対応アプリで行う。今回は**Google Authenticator**を例に説明する。
+
+iOS版（iPhone / iPad）
+👉 [App Store: Google Authenticator](https://apps.apple.com/jp/app/google-authenticator/id388497605)
+
+Android版
+👉 [Google Play: Google Authenticator](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=ja)
+
+
 1. **VRChat公式サイトにアクセス**
-   [https://vrchat.com/home](https://vrchat.com/home) にアクセスし、右上の「Sign Up」から新規登録を行う。
+   [https://vrchat.com/home](https://vrchat.com/home) にアクセスし、「Create a New Account」からアカウントの新規作成を行う。
 
 2. **運営専用の情報で登録**
    - ユーザ名：`yasairap_admin` や `event_manager_vrc` など、運営が識別しやすい名前  
@@ -185,13 +194,15 @@ YasaiRap Backend が VRChat API にアクセスする際には、**自動ログ�
    - パスワード：他サービスと共有しない強力なものを設定
 
 3. **ログインして 2FA を有効化**
-   - Account Settings ページから Two-Factor Authentication (2FA) を有効にする  
+   - Account Settings ページから Two-Factor Authentication (2FA) を有効にする。 
    ![alt text](image.png)
-   - Next を押し、enter the key manually をクリックしてでてくる32桁の英数字を確認する。
+   - Next を押し、Google Authenticator を起動し、表示された QR コードをスキャンする。
+   - enter the key manually をクリックし、でてくる32桁の英数字を確認する。
    ![alt text](image-1.png)
    通常、以下のような形式で表示されている：```
    abcd efgh ijkl mnop qrst uvwx yz12 3456 ```
-   - **空白を削除して1行にまとめ`.env` に設定**  
+   - **空白を削除して1行にまとめ`.env` に設定**```
+   abcdefghijklmnopqrstuvwxyz123456```
 
 
 4. **.env に登録**
@@ -199,14 +210,26 @@ YasaiRap Backend が VRChat API にアクセスする際には、**自動ログ�
 
    ```bash
    # VRCHAT API用
-   YASAIRAP_CONTACT_EMAIL=your-contact-email-for-vrchat-api
+   YASAIRAP_CONTACT_EMAIL=admin@yourdomain.com
    # 運営専用のVRChatアカウントのusername, password
    VRCHAT_USERNAME=your-vrchat-username
    VRCHAT_PASSWORD=your-vrchat-password
    # 空白は埋める
-   VRCHAT_TOTP_SECRET=your-vrchat-totp-secret-key(BASE32)
+   VRCHAT_TOTP_SECRET=abcdefghijklmnopqrstuvwxyz123456
    ```
 
 ### 6. 動作確認
 
 環境変数が設定された状態でアプリを起動(Dockerセットアップ 3.で```docker compose up --build```する)後、Discord サーバで Bot がオンラインになれば成功。
+
+#### `/whitelist` コマンドの動作確認
+VRChat API の認証情報（`VRCHAT_USERNAME`, `VRCHAT_PASSWORD`, `VRCHAT_TOTP_SECRET`）を正しく設定したら、  
+Discord 側から `/whitelist` コマンドを実行して、Bot とバックエンドが正常に連携しているか確認できる。
+
+1. **Discordサーバーで `/whitelist` コマンドを入力**
+![alt text](image-2.png)
+2. **Botの応答を確認**
+![alt text](image-3.png)
+3. **登録できるか確認**
+   自分のVRChat名で登録できるか確認
+   ![alt text](image-4.png)

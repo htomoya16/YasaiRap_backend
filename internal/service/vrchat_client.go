@@ -19,8 +19,9 @@ import (
 
 // Search All Users から使う最低限の情報
 type VRChatUser struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName"`
+	ID                    string `json:"id"`
+	DisplayName           string `json:"displayName"`
+	CurrentAvatarImageURL string `json:"currentAvatarImageUrl"`
 }
 
 // WhitelistService から見えるインターフェース

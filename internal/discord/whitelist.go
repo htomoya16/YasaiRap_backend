@@ -30,27 +30,49 @@ func extractUserID(i *discordgo.InteractionCreate) string {
 	return ""
 }
 
+// 対象Discordユーザー情報取得（ユーザー名＋アイコンURL）
+func extractUserInfo(i *discordgo.InteractionCreate) (id, username, avatarURL string) {
+	var u *discordgo.User
+	if i.Member != nil && i.Member.User != nil {
+		u = i.Member.User
+	} else if i.User != nil {
+		u = i.User
+	}
+	if u == nil {
+		return "", "", ""
+	}
+	return u.ID, u.Username, u.AvatarURL("128")
+}
+
 // /whitelist 実行時: 状態Embed + ボタン
 func (r *Router) handleWhitelistPanel(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	userID := extractUserID(i)
-	if userID == "" {
+	discordID, username, avatarURL := extractUserInfo(i)
+	if discordID == "" {
 		return
 	}
+
 	ctx := context.Background()
 
 	// 現在の紐付け取得（1:1想定）
-	link, err := r.WhitelistService.GetDiscordVRC(ctx, userID)
+	link, err := r.WhitelistService.GetDiscordVRC(ctx, discordID)
 	if err != nil {
 		link = nil
 	}
 
 	allowed := link != nil
-	var names []string
+
+	var (
+		names        []string
+		vrcAvatarURL string
+	)
 	if link != nil {
-		names = []string{link.VRCDisplayName}
+		if link.VRCDisplayName != "" {
+			names = []string{link.VRCDisplayName}
+		}
+		vrcAvatarURL = link.VRCAvatarURL
 	}
 
-	embed := buildWhitelistEmbed(userID, allowed, names)
+	embed := buildWhitelistEmbed(discordID, username, avatarURL, allowed, names, vrcAvatarURL)
 	components := whitelistButtons()
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -90,12 +112,30 @@ func whitelistButtons() []discordgo.MessageComponent {
 
 // embedの構築
 // names は現状 0 or 1 件想定だが、将来拡張も考えて配列のまま。
-func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discordgo.MessageEmbed {
-	status := "未登録"
-	color := 0xff9933
+// vrcAvatarURL: whitelist_users に保存した currentAvatarImageUrl を渡す
+func buildWhitelistEmbed(
+	discordID, username, avatarURL string,
+	allowed bool,
+	names []string,
+	vrcAvatarURL string,
+) *discordgo.MessageEmbed {
+	var (
+		title       string
+		description string
+		color       int
+		statusValue string
+	)
+
 	if allowed {
-		status = "登録済み"
+		title = "✅ ホワイトリスト登録済み"
+		description = "この Discord アカウントは大会用ホワイトリストに登録されている。"
 		color = 0x00cc99
+		statusValue = "✅ 登録済み"
+	} else {
+		title = "❌ ホワイトリスト未登録"
+		description = "VRChat 名を登録してホワイトリストに参加できる状態にする必要がある。"
+		color = 0xff5555
+		statusValue = "❌ 未登録"
 	}
 
 	vrcField := "なし"
@@ -103,33 +143,48 @@ func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discor
 		vrcField = "- " + strings.Join(names, "\n- ")
 	}
 
-	fields := []*discordgo.MessageEmbedField{
-		{
-			Name:  "ステータス",
-			Value: status,
+	discordValue := "なし"
+	if discordID != "" {
+		discordValue = "<@" + discordID + ">"
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       title,
+		Description: description + "\n`登録 / 更新` ボタンから VRChat 名を登録・更新できる。",
+		Color:       color,
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    username + " さんのホワイトリスト状態",
+			IconURL: avatarURL,
+		},
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "ステータス",
+				Value:  statusValue,
+				Inline: true,
+			},
+			{
+				Name:   "Discord",
+				Value:  discordValue,
+				Inline: true,
+			},
+			{
+				Name:  "紐づいている VRChat 名",
+				Value: vrcField,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "※このパネルは自分にのみ表示される（Ephemeral）。",
 		},
 	}
 
-	discordValue := "なし"
-	if allowed {
-		discordValue = "<@" + discordID + ">"
+	// VRChatアバター画像（DBに保存された currentAvatarImageUrl）を大きめ表示
+	if vrcAvatarURL != "" {
+		embed.Image = &discordgo.MessageEmbedImage{
+			URL: vrcAvatarURL,
+		}
 	}
-	fields = append(fields, &discordgo.MessageEmbedField{
-		Name:  "Discord ID",
-		Value: discordValue,
-	})
 
-	fields = append(fields, &discordgo.MessageEmbedField{
-		Name:  "紐づいている VRChat 名",
-		Value: vrcField,
-	})
-
-	return &discordgo.MessageEmbed{
-		Title:       "ホワイトリスト状態",
-		Description: "この Discord アカウントに紐づいている VRChat アカウントの状態。",
-		Color:       color,
-		Fields:      fields,
-	}
+	return embed
 }
 
 // ボタン押下
@@ -181,8 +236,8 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 		return
 	}
 
-	userID := extractUserID(i)
-	if userID == "" {
+	discordID, username, avatarURL := extractUserInfo(i)
+	if discordID == "" {
 		return
 	}
 
@@ -204,7 +259,7 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	}
 
 	ctx := context.Background()
-	created, err := r.WhitelistService.RegisterDiscordVRC(ctx, userID, vrcName)
+	created, err := r.WhitelistService.RegisterDiscordVRC(ctx, discordID, vrcName)
 
 	var msg string
 	switch {
@@ -222,17 +277,24 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	case created:
 		msg = "ホワイトリストに登録した。"
 	default:
-		// 既存行の更新パターン
 		msg = "ホワイトリストの情報を更新した。"
 	}
 
-	link, _ := r.WhitelistService.GetDiscordVRC(ctx, userID)
+	link, _ := r.WhitelistService.GetDiscordVRC(ctx, discordID)
 	allowed := link != nil
-	var names []string
+
+	var (
+		names        []string
+		vrcAvatarURL string
+	)
 	if link != nil {
-		names = []string{link.VRCDisplayName}
+		if link.VRCDisplayName != "" {
+			names = []string{link.VRCDisplayName}
+		}
+		vrcAvatarURL = link.VRCAvatarURL
 	}
-	embed := buildWhitelistEmbed(userID, allowed, names)
+
+	embed := buildWhitelistEmbed(discordID, username, avatarURL, allowed, names, vrcAvatarURL)
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -247,15 +309,18 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 
 // 「削除」ボタン: この Discord ユーザーのリンクを物理削除
 func (r *Router) handleWhitelistDelete(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
+	_, username, avatarURL := extractUserInfo(i)
+
 	ctx := context.Background()
 	err := r.WhitelistService.RemoveDiscord(ctx, userID)
 
 	msg := "ホワイトリストから削除した。"
 	if err != nil {
+		log.Printf("RemoveDiscord internal error: %+v", err)
 		msg = "内部エラーで削除に失敗した。"
 	}
 
-	embed := buildWhitelistEmbed(userID, false, nil)
+	embed := buildWhitelistEmbed(userID, username, avatarURL, false, nil, "")
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
@@ -270,14 +335,24 @@ func (r *Router) handleWhitelistDelete(s *discordgo.Session, i *discordgo.Intera
 
 // 「再表示」ボタン: 現在の状態を取り直してEmbed更新
 func (r *Router) handleWhitelistRefresh(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
+	_, username, avatarURL := extractUserInfo(i)
+
 	ctx := context.Background()
 	link, _ := r.WhitelistService.GetDiscordVRC(ctx, userID)
 	allowed := link != nil
-	var names []string
+
+	var (
+		names        []string
+		vrcAvatarURL string
+	)
 	if link != nil {
-		names = []string{link.VRCDisplayName}
+		if link.VRCDisplayName != "" {
+			names = []string{link.VRCDisplayName}
+		}
+		vrcAvatarURL = link.VRCAvatarURL
 	}
-	embed := buildWhitelistEmbed(userID, allowed, names)
+
+	embed := buildWhitelistEmbed(userID, username, avatarURL, allowed, names, vrcAvatarURL)
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,

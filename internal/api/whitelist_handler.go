@@ -71,11 +71,11 @@ func (h *WhitelistHandler) RegisterDiscordVRC(c echo.Context) error {
 
 // 指定Discordユーザーの紐付け解除
 func (h *WhitelistHandler) RemoveDiscordVRC(c echo.Context) error {
-	type UnlinkDiscordVRCRequest struct {
+	type RemoveDiscordVRCRequest struct {
 		DiscordUserID string `json:"discord_user_id"`
 	}
 
-	var r UnlinkDiscordVRCRequest
+	var r RemoveDiscordVRCRequest
 	if err := c.Bind(&r); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid json: "+err.Error())
 	}

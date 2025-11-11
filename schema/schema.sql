@@ -1,3 +1,17 @@
+-- Create "whitelist_users" table
+CREATE TABLE `whitelist_users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `discord_user_id` varchar(64) NOT NULL,
+  `vrc_user_id` varchar(64) NOT NULL,
+  `vrc_display_name` varchar(64) NOT NULL,
+  `vrc_avatar_url` varchar(512) NULL,
+  `note` varchar(255) NOT NULL DEFAULT "",
+  `created_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uq_discord_user` (`discord_user_id`),
+  UNIQUE INDEX `uq_vrc_user` (`vrc_user_id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- Create "users" table
 CREATE TABLE `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -206,18 +220,3 @@ CREATE TABLE `vrc_registration_events` (
   CONSTRAINT `fk_vrc_ev_actor` FOREIGN KEY (`actor_user_id`) REFERENCES `users` (`id`) ON UPDATE RESTRICT ON DELETE SET NULL,
   CONSTRAINT `fk_vrc_ev_reg` FOREIGN KEY (`registration_id`) REFERENCES `vrc_registrations` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
-CREATE TABLE `whitelist_users` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `discord_user_id` varchar(64) NOT NULL,      -- Snowflake
-  `vrc_user_id` varchar(64) NOT NULL,          -- VRChat userId
-  `vrc_display_name` varchar(64) NOT NULL,     -- 取得時点の表示名（ログ用）
-  `note` varchar(255) NOT NULL DEFAULT '',
-  `created_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `updated_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-    ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_discord_user` (`discord_user_id`),
-  UNIQUE KEY `uq_vrc_user` (`vrc_user_id`)
-) CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-

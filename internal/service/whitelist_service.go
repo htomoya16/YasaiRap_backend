@@ -78,6 +78,7 @@ func (s *whitelistService) RegisterDiscordVRC(
 		DiscordUserID:  discordID,
 		VRCUserID:      user.ID,
 		VRCDisplayName: user.DisplayName,
+		VRCAvatarURL:   user.CurrentAvatarImageURL,
 		Note:           "",
 	}
 

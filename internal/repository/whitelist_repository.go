@@ -24,24 +24,27 @@ func NewWhitelistRepository(db *sql.DB) WhitelistRepository {
 }
 
 func (r *whitelistRepository) Upsert(ctx context.Context, u *models.WhitelistUser) error {
-	// ON DUPLICATE KEY UPDATE レコードを挿入または重複があった場合は更新
+	// discord_user_id / vrc_user_id の UNIQUE を利用してUpsert
 	const q = `
 		INSERT INTO whitelist_users (
-		discord_user_id,
-		vrc_user_id,
-		vrc_display_name,
-		note
-		) VALUES (?, ?, ?, ?)
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			vrc_avatar_url,
+			note
+		) VALUES (?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
-		vrc_user_id      = VALUES(vrc_user_id),
-		vrc_display_name = VALUES(vrc_display_name),
-		note             = VALUES(note),
-		updated_at       = CURRENT_TIMESTAMP(6);
-		`
+			vrc_user_id      = VALUES(vrc_user_id),
+			vrc_display_name = VALUES(vrc_display_name),
+			vrc_avatar_url   = VALUES(vrc_avatar_url),
+			note             = VALUES(note),
+			updated_at       = CURRENT_TIMESTAMP(6);
+	`
 	_, err := r.db.ExecContext(ctx, q,
 		u.DiscordUserID,
 		u.VRCUserID,
 		u.VRCDisplayName,
+		u.VRCAvatarURL,
 		u.Note,
 	)
 	return err
@@ -49,11 +52,19 @@ func (r *whitelistRepository) Upsert(ctx context.Context, u *models.WhitelistUse
 
 func (r *whitelistRepository) GetByDiscordID(ctx context.Context, discordID string) (*models.WhitelistUser, error) {
 	const q = `
-		SELECT id, discord_user_id, vrc_user_id, vrc_display_name, note, created_at, updated_at
+		SELECT
+			id,
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			COALESCE(vrc_avatar_url, ''),
+			note,
+			created_at,
+			updated_at
 		FROM whitelist_users
 		WHERE discord_user_id = ?
 		LIMIT 1;
-		`
+	`
 	row := r.db.QueryRowContext(ctx, q, discordID)
 
 	var u models.WhitelistUser
@@ -62,6 +73,7 @@ func (r *whitelistRepository) GetByDiscordID(ctx context.Context, discordID stri
 		&u.DiscordUserID,
 		&u.VRCUserID,
 		&u.VRCDisplayName,
+		&u.VRCAvatarURL,
 		&u.Note,
 		&u.CreatedAt,
 		&u.UpdatedAt,
@@ -76,11 +88,19 @@ func (r *whitelistRepository) GetByDiscordID(ctx context.Context, discordID stri
 
 func (r *whitelistRepository) GetByVRCUserID(ctx context.Context, vrcUserID string) (*models.WhitelistUser, error) {
 	const q = `
-		SELECT id, discord_user_id, vrc_user_id, vrc_display_name, note, created_at, updated_at
+		SELECT
+			id,
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			COALESCE(vrc_avatar_url, ''),
+			note,
+			created_at,
+			updated_at
 		FROM whitelist_users
 		WHERE vrc_user_id = ?
 		LIMIT 1;
-		`
+	`
 	row := r.db.QueryRowContext(ctx, q, vrcUserID)
 
 	var u models.WhitelistUser
@@ -89,6 +109,7 @@ func (r *whitelistRepository) GetByVRCUserID(ctx context.Context, vrcUserID stri
 		&u.DiscordUserID,
 		&u.VRCUserID,
 		&u.VRCDisplayName,
+		&u.VRCAvatarURL,
 		&u.Note,
 		&u.CreatedAt,
 		&u.UpdatedAt,

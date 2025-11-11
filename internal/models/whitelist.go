@@ -7,6 +7,7 @@ type WhitelistUser struct {
 	DiscordUserID  string
 	VRCUserID      string
 	VRCDisplayName string
+	VRCAvatarURL   string
 	Note           string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
