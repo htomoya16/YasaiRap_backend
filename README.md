@@ -28,6 +28,7 @@ cd YasaiRap_backend
 ### 2. 環境変数の設定
 
 `.env.example`より`.env` ファイルを作成し、以下を設定する。
+Discord関連、VRCHAT API用については後述。
 
 ```env
 # MySQL
@@ -44,9 +45,16 @@ DB_HOST=mysql
 DB_PORT=3306
 
 # DISCORD関連
-DISCORD_TOKEN=your_discord_bot_token
-DISCORD_APP_ID=your_discord_app_id
-DISCORD_GUILD_ID=your_test_guild_id
+DISCORD_TOKEN=
+DISCORD_APP_ID=
+DISCORD_GUILD_ID=
+
+# VRCHAT API用
+YASAIRAP_CONTACT_EMAIL=your-contact-email-for-vrchat-api
+VRCHAT_USERNAME=your-vrchat-username
+VRCHAT_PASSWORD=your-vrchat-password
+# 空白は埋める
+VRCHAT_TOTP_SECRET=your-vrchat-totp-secret-key(BASE32)
 ```
 
 ### 3. プロジェクトを起動(開発環境)
@@ -157,6 +165,48 @@ Bot がメッセージ内容やメンバー情報にアクセスできるよう�
 - ✅ **MESSAGE CONTENT INTENT**  
 - ✅ **SERVER MEMBERS INTENT**
 
-### 5. 動作確認
+### 5. VRCHAT API用の.envについて
+#### 👤 運営専用 VRChat アカウントの作成
+YasaiRap Backend が VRChat API にアクセスする際には、**自動ログイン（ユーザ名・パスワード・TOTP認証）** を行う。  
+そのため、個人アカウントを使用すると以下のリスクが発生する：
+
+- パスワードやTOTPシークレットが漏洩した場合に**個人アカウントが乗っ取られる**  
+- 頻繁なAPIアクセスにより、**通常プレイ用アカウントが一時的に制限**される可能性  
+
+
+このため、**運営専用のVRChatアカウントを新規に作成**することを強く推奨する。
+
+1. **VRChat公式サイトにアクセス**
+   [https://vrchat.com/home](https://vrchat.com/home) にアクセスし、右上の「Sign Up」から新規登録を行う。
+
+2. **運営専用の情報で登録**
+   - ユーザ名：`yasairap_admin` や `event_manager_vrc` など、運営が識別しやすい名前  
+   - メールアドレス：運営チームで共有可能なメール(これも新しく作成することを推奨)（例：`admin@yourdomain.com`）  
+   - パスワード：他サービスと共有しない強力なものを設定
+
+3. **ログインして 2FA を有効化**
+   - Account Settings ページから Two-Factor Authentication (2FA) を有効にする  
+   ![alt text](image.png)
+   - Next を押し、enter the key manually をクリックしてでてくる32桁の英数字を確認する。
+   ![alt text](image-1.png)
+   通常、以下のような形式で表示されている：```
+   abcd efgh ijkl mnop qrst uvwx yz12 3456 ```
+   - **空白を削除して1行にまとめ`.env` に設定**  
+
+
+4. **.env に登録**
+   `.env` ファイルに以下を設定する：
+
+   ```bash
+   # VRCHAT API用
+   YASAIRAP_CONTACT_EMAIL=your-contact-email-for-vrchat-api
+   # 運営専用のVRChatアカウントのusername, password
+   VRCHAT_USERNAME=your-vrchat-username
+   VRCHAT_PASSWORD=your-vrchat-password
+   # 空白は埋める
+   VRCHAT_TOTP_SECRET=your-vrchat-totp-secret-key(BASE32)
+   ```
+
+### 6. 動作確認
 
 環境変数が設定された状態でアプリを起動(Dockerセットアップ 3.で```docker compose up --build```する)後、Discord サーバで Bot がオンラインになれば成功。
