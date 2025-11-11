@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
@@ -11,6 +12,7 @@ require (
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.38.0 // indirect

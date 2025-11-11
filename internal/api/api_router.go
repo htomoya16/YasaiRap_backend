@@ -8,7 +8,7 @@ func SetupRoutes(
 	// 引数
 	e *echo.Echo,
 	healthHandler *HealthHandler,
-	discord *WhitelistHandler) {
+	whitelistHandler *WhitelistHandler) {
 
 	api := e.Group("/api")
 
@@ -17,8 +17,10 @@ func SetupRoutes(
 	api.GET("/readyz", healthHandler.Readyz)
 	api.GET("/healthz", healthHandler.Healthz)
 
-	// Discord管理用
-	g := e.Group("/discord")
-	g.POST("/whitelist/add", discord.Add)
-	g.POST("/whitelist/remove", discord.Remove)
+	// Discordホワイトリスト管理用
+	discord := api.Group("/discord")
+	// 登録/更新
+	discord.POST("/whitelist/register", whitelistHandler.RegisterDiscordVRC)
+	// 削除
+	discord.POST("/whitelist/remove", whitelistHandler.RemoveDiscordVRC)
 }

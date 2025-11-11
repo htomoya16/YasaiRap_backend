@@ -1,3 +1,17 @@
+-- Create "whitelist_users" table
+CREATE TABLE `whitelist_users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `discord_user_id` varchar(64) NOT NULL,
+  `vrc_user_id` varchar(64) NOT NULL,
+  `vrc_display_name` varchar(64) NOT NULL,
+  `vrc_avatar_url` varchar(512) NULL,
+  `note` varchar(255) NOT NULL DEFAULT "",
+  `created_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `uq_discord_user` (`discord_user_id`),
+  UNIQUE INDEX `uq_vrc_user` (`vrc_user_id`)
+) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- Create "users" table
 CREATE TABLE `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -205,25 +219,4 @@ CREATE TABLE `vrc_registration_events` (
   INDEX `idx_vrc_ev_reg` (`registration_id`),
   CONSTRAINT `fk_vrc_ev_actor` FOREIGN KEY (`actor_user_id`) REFERENCES `users` (`id`) ON UPDATE RESTRICT ON DELETE SET NULL,
   CONSTRAINT `fk_vrc_ev_reg` FOREIGN KEY (`registration_id`) REFERENCES `vrc_registrations` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Create "whitelists" table
-CREATE TABLE whitelists (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  platform ENUM('discord', 'vrc') NOT NULL,
-  user_id VARCHAR(64) NOT NULL,
-  note VARCHAR(255) NOT NULL DEFAULT '',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uq_platform_user (platform, user_id)
-) ENGINE=InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
--- Create "whitelist_items" table
-CREATE TABLE `whitelist_items` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `whitelist_id` bigint unsigned NOT NULL,
-  `vrc_name` varchar(64) NOT NULL,
-  `vrc_name_norm` varchar(64) AS (lower(`vrc_name`)) STORED NULL,
-  PRIMARY KEY (`id`),
-  INDEX `idx_wli_norm` (`vrc_name_norm`),
-  UNIQUE INDEX `uq_whitelist_item` (`whitelist_id`, `vrc_name_norm`),
-  CONSTRAINT `fk_wli_whitelist` FOREIGN KEY (`whitelist_id`) REFERENCES `whitelists` (`id`) ON UPDATE RESTRICT ON DELETE CASCADE
 ) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

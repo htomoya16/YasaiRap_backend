@@ -1,16 +1,18 @@
 package repository
 
 import (
-	"backend/internal/domain"
+	"backend/internal/models"
 	"context"
 	"database/sql"
 )
 
 type WhitelistRepository interface {
-	Add(ctx context.Context, w domain.Whitelist) error
-	Remove(ctx context.Context, platform, userID string) error
-	Exists(ctx context.Context, platform, userID string) (bool, error)
-	List(ctx context.Context, platform string, limit, offset int) ([]domain.Whitelist, error)
+	Upsert(ctx context.Context, u *models.WhitelistUser) error
+	GetByDiscordID(ctx context.Context, discordID string) (*models.WhitelistUser, error)
+	GetByVRCUserID(ctx context.Context, vrcUserID string) (*models.WhitelistUser, error)
+	ExistsByDiscordID(ctx context.Context, discordID string) (bool, error)
+	ExistsByVRCUserID(ctx context.Context, vrcUserID string) (bool, error)
+	RemoveByDiscordID(ctx context.Context, discordID string) error
 }
 
 type whitelistRepository struct {
@@ -21,31 +23,109 @@ func NewWhitelistRepository(db *sql.DB) WhitelistRepository {
 	return &whitelistRepository{db: db}
 }
 
-func (r *whitelistRepository) Add(ctx context.Context, w domain.Whitelist) error {
-	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO whitelists (platform, user_id, note)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE note = VALUES(note)`,
-		w.Platform, w.UserID, w.Note,
+func (r *whitelistRepository) Upsert(ctx context.Context, u *models.WhitelistUser) error {
+	// discord_user_id / vrc_user_id の UNIQUE を利用してUpsert
+	const q = `
+		INSERT INTO whitelist_users (
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			vrc_avatar_url,
+			note
+		) VALUES (?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			vrc_user_id      = VALUES(vrc_user_id),
+			vrc_display_name = VALUES(vrc_display_name),
+			vrc_avatar_url   = VALUES(vrc_avatar_url),
+			note             = VALUES(note),
+			updated_at       = CURRENT_TIMESTAMP(6);
+	`
+	_, err := r.db.ExecContext(ctx, q,
+		u.DiscordUserID,
+		u.VRCUserID,
+		u.VRCDisplayName,
+		u.VRCAvatarURL,
+		u.Note,
 	)
 	return err
 }
 
-func (r *whitelistRepository) Remove(ctx context.Context, platform, userID string) error {
-	_, err := r.db.ExecContext(ctx,
-		`DELETE FROM whitelists WHERE platform = ? AND user_id = ?`,
-		platform, userID,
-	)
-	return err
+func (r *whitelistRepository) GetByDiscordID(ctx context.Context, discordID string) (*models.WhitelistUser, error) {
+	const q = `
+		SELECT
+			id,
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			COALESCE(vrc_avatar_url, ''),
+			note,
+			created_at,
+			updated_at
+		FROM whitelist_users
+		WHERE discord_user_id = ?
+		LIMIT 1;
+	`
+	row := r.db.QueryRowContext(ctx, q, discordID)
+
+	var u models.WhitelistUser
+	if err := row.Scan(
+		&u.ID,
+		&u.DiscordUserID,
+		&u.VRCUserID,
+		&u.VRCDisplayName,
+		&u.VRCAvatarURL,
+		&u.Note,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
 }
 
-func (r *whitelistRepository) Exists(ctx context.Context, platform, userID string) (bool, error) {
-	var dummy int
-	err := r.db.QueryRowContext(ctx,
-		`SELECT 1 FROM whitelists WHERE platform = ? AND user_id = ? LIMIT 1`,
-		platform, userID,
-	).Scan(&dummy)
+func (r *whitelistRepository) GetByVRCUserID(ctx context.Context, vrcUserID string) (*models.WhitelistUser, error) {
+	const q = `
+		SELECT
+			id,
+			discord_user_id,
+			vrc_user_id,
+			vrc_display_name,
+			COALESCE(vrc_avatar_url, ''),
+			note,
+			created_at,
+			updated_at
+		FROM whitelist_users
+		WHERE vrc_user_id = ?
+		LIMIT 1;
+	`
+	row := r.db.QueryRowContext(ctx, q, vrcUserID)
 
+	var u models.WhitelistUser
+	if err := row.Scan(
+		&u.ID,
+		&u.DiscordUserID,
+		&u.VRCUserID,
+		&u.VRCDisplayName,
+		&u.VRCAvatarURL,
+		&u.Note,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *whitelistRepository) ExistsByDiscordID(ctx context.Context, discordID string) (bool, error) {
+	const q = `SELECT 1 FROM whitelist_users WHERE discord_user_id = ? LIMIT 1`
+	var x int
+	err := r.db.QueryRowContext(ctx, q, discordID).Scan(&x)
 	if err == sql.ErrNoRows {
 		return false, nil
 	}
@@ -55,27 +135,21 @@ func (r *whitelistRepository) Exists(ctx context.Context, platform, userID strin
 	return true, nil
 }
 
-func (r *whitelistRepository) List(ctx context.Context, platform string, limit, offset int) ([]domain.Whitelist, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, platform, user_id, note, created_at
-		   FROM whitelists
-		  WHERE platform = ?
-		  ORDER BY id DESC
-		  LIMIT ? OFFSET ?`,
-		platform, limit, offset,
-	)
+func (r *whitelistRepository) ExistsByVRCUserID(ctx context.Context, vrcUserID string) (bool, error) {
+	const q = `SELECT 1 FROM whitelist_users WHERE vrc_user_id = ? LIMIT 1`
+	var x int
+	err := r.db.QueryRowContext(ctx, q, vrcUserID).Scan(&x)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	defer rows.Close()
+	return true, nil
+}
 
-	var out []domain.Whitelist
-	for rows.Next() {
-		var w domain.Whitelist
-		if err := rows.Scan(&w.ID, &w.Platform, &w.UserID, &w.Note, &w.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, w)
-	}
-	return out, rows.Err()
+func (r *whitelistRepository) RemoveByDiscordID(ctx context.Context, discordID string) error {
+	const q = `DELETE FROM whitelist_users WHERE discord_user_id = ?`
+	_, err := r.db.ExecContext(ctx, q, discordID)
+	return err
 }

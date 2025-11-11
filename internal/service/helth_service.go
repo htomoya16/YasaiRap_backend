@@ -1,7 +1,7 @@
 package service
 
 import (
-	"backend/internal/domain"
+	"backend/internal/models"
 	"backend/internal/repository"
 	"context"
 	"os"
@@ -12,7 +12,7 @@ import (
 type HealthService interface {
 	Live(ctx context.Context) bool
 	Ready(ctx context.Context) bool
-	Report(ctx context.Context) domain.HealthReport
+	Report(ctx context.Context) models.HealthReport
 	MarkReady()
 	MarkNotReady()
 }
@@ -58,9 +58,9 @@ func (s *healthService) Ready(ctx context.Context) bool {
 }
 
 // 人間/監視向けの総合診断
-func (s *healthService) Report(ctx context.Context) domain.HealthReport {
+func (s *healthService) Report(ctx context.Context) models.HealthReport {
 	dbOK := s.healthRepo.PingDB(ctx) == nil
-	return domain.HealthReport{
+	return models.HealthReport{
 		Live:    true,
 		Ready:   s.readyFlag.Load() && dbOK,
 		DB:      dbOK,
