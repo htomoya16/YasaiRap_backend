@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,8 +29,13 @@ func main() {
 	defer db.Close()
 
 	// DI
+	vrchat, err := service.NewHTTPVRChatClientFromEnv()
+	if err != nil {
+		log.Fatalf("vrchat client init failed: %v", err)
+	}
+
 	whitelistRepo := repository.NewWhitelistRepository(db)
-	whitelistService := service.NewWhitelistService(whitelistRepo)
+	whitelistService := service.NewWhitelistService(whitelistRepo, vrchat)
 	whitelistHandler := api.NewWhitelistHandler(whitelistService)
 
 	healthRepo := repository.NewHealthRepository(db)

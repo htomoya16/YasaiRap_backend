@@ -1,10 +1,10 @@
-// internal/discord/whitelist.go (の先頭あたり)
 package discord
 
 import (
-	"backend/internal/models"
 	"backend/internal/service"
 	"context"
+	"errors"
+	"log"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -36,22 +36,21 @@ func (r *Router) handleWhitelistPanel(s *discordgo.Session, i *discordgo.Interac
 	if userID == "" {
 		return
 	}
-
 	ctx := context.Background()
 
-	allowed, err := r.WhitelistService.IsAllowed(ctx, models.WhitelistPlatformDiscord, userID)
+	// 現在の紐付け取得（1:1想定）
+	link, err := r.WhitelistService.GetDiscordVRC(ctx, userID)
 	if err != nil {
-		allowed = false
+		link = nil
 	}
 
-	names, err := r.WhitelistService.GetDiscordVRCNames(ctx, userID)
-	if err != nil {
-		names = nil
+	allowed := link != nil
+	var names []string
+	if link != nil {
+		names = []string{link.VRCDisplayName}
 	}
 
-	// embed
 	embed := buildWhitelistEmbed(userID, allowed, names)
-	// buttons
 	components := whitelistButtons()
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -64,14 +63,14 @@ func (r *Router) handleWhitelistPanel(s *discordgo.Session, i *discordgo.Interac
 	})
 }
 
-// buttonの種類
+// ボタン定義
 func whitelistButtons() []discordgo.MessageComponent {
 	return []discordgo.MessageComponent{
 		discordgo.ActionsRow{
 			Components: []discordgo.MessageComponent{
 				&discordgo.Button{
 					CustomID: btnWhitelistRegister,
-					Label:    "登録 / 追加",
+					Label:    "登録 / 更新",
 					Style:    discordgo.PrimaryButton,
 				},
 				&discordgo.Button{
@@ -81,7 +80,7 @@ func whitelistButtons() []discordgo.MessageComponent {
 				},
 				&discordgo.Button{
 					CustomID: btnWhitelistRefresh,
-					Label:    "更新",
+					Label:    "再表示",
 					Style:    discordgo.SecondaryButton,
 				},
 			},
@@ -90,6 +89,7 @@ func whitelistButtons() []discordgo.MessageComponent {
 }
 
 // embedの構築
+// names は現状 0 or 1 件想定だが、将来拡張も考えて配列のまま。
 func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discordgo.MessageEmbed {
 	status := "未登録"
 	color := 0xff9933
@@ -110,7 +110,6 @@ func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discor
 		},
 	}
 
-	// Discord ID欄を状態で出し分け
 	discordValue := "なし"
 	if allowed {
 		discordValue = "<@" + discordID + ">"
@@ -121,13 +120,13 @@ func buildWhitelistEmbed(discordID string, allowed bool, names []string) *discor
 	})
 
 	fields = append(fields, &discordgo.MessageEmbedField{
-		Name:  "紐づいているVRChat名",
+		Name:  "紐づいている VRChat 名",
 		Value: vrcField,
 	})
 
 	return &discordgo.MessageEmbed{
 		Title:       "ホワイトリスト状態",
-		Description: "このDiscordアカウントのホワイトリスト登録状況。",
+		Description: "この Discord アカウントに紐づいている VRChat アカウントの状態。",
 		Color:       color,
 		Fields:      fields,
 	}
@@ -141,33 +140,29 @@ func (r *Router) handleWhitelistComponent(s *discordgo.Session, i *discordgo.Int
 		return
 	}
 
-	// data.CustomIDが
 	switch data.CustomID {
-	// "登録"なら
 	case btnWhitelistRegister:
 		r.openWhitelistRegisterModal(s, i)
-	// "削除"なら
 	case btnWhitelistDelete:
-		r.handleWhitelistDeleteAll(s, i, userID)
-	// "更新"なら
+		r.handleWhitelistDelete(s, i, userID)
 	case btnWhitelistRefresh:
 		r.handleWhitelistRefresh(s, i, userID)
 	}
 }
 
-// 登録
+// 「登録 / 更新」ボタン → VRChat名入力モーダルを開く
 func (r *Router) openWhitelistRegisterModal(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
 			CustomID: modalWhitelistRegister,
-			Title:    "VRChat名を登録 / 追加",
+			Title:    "VRChat名を登録 / 更新",
 			Components: []discordgo.MessageComponent{
 				discordgo.ActionsRow{
 					Components: []discordgo.MessageComponent{
 						&discordgo.TextInput{
 							CustomID:    modalInputVRCName,
-							Label:       "VRChat上の名前",
+							Label:       "VRChat 上の表示名（displayName）",
 							Style:       discordgo.TextInputShort,
 							Required:    true,
 							Placeholder: "例: 野菜ラップ",
@@ -179,7 +174,7 @@ func (r *Router) openWhitelistRegisterModal(s *discordgo.Session, i *discordgo.I
 	})
 }
 
-// モーダルでsubmitしたら
+// モーダル submit: VRChat displayName から Search All Users → whitelist_users 更新
 func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	data := i.ModalSubmitData()
 	if data.CustomID != modalWhitelistRegister {
@@ -192,8 +187,6 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	}
 
 	var vrcName string
-
-	// モーダル内の TextInput を正しく拾う
 	for _, comp := range data.Components {
 		row, ok := comp.(*discordgo.ActionsRow)
 		if !ok {
@@ -211,25 +204,34 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	}
 
 	ctx := context.Background()
-	// userIDとvrcnameでデータベース登録のserviceへ
 	created, err := r.WhitelistService.RegisterDiscordVRC(ctx, userID, vrcName)
 
 	var msg string
 	switch {
-	case err == service.ErrInvalidArgument:
-		msg = "VRChat名が空か不正だ。入力を確認してくれ。"
-	case err == service.ErrAlreadyExists:
-		msg = "そのVRChat名はすでに登録済みだ。"
+	case errors.Is(err, service.ErrInvalidArgument):
+		msg = "VRChat名が空か不正。もう一度入力してくれ。"
+	case errors.Is(err, service.ErrNoExactMatch):
+		msg = "その VRChat名に完全一致するユーザーが見つからなかった。"
+	case errors.Is(err, service.ErrMultipleExactMatch):
+		msg = "同じ VRChat名のユーザーが複数いるため特定できない。"
+	case errors.Is(err, service.ErrAlreadyExists):
+		msg = "その VRChatアカウントは既に別の Discord ユーザーに登録されている。"
 	case err != nil:
-		msg = "内部エラーで登録に失敗した。"
+		log.Printf("RegisterDiscordVRC internal error: %+v", err)
+		msg = "内部エラーで登録に失敗した。時間をおいて試してくれ。"
 	case created:
 		msg = "ホワイトリストに登録した。"
 	default:
-		msg = "処理は完了した可能性が高いが、状態を確認してくれ。"
+		// 既存行の更新パターン
+		msg = "ホワイトリストの情報を更新した。"
 	}
 
-	allowed, _ := r.WhitelistService.IsAllowed(ctx, models.WhitelistPlatformDiscord, userID)
-	names, _ := r.WhitelistService.GetDiscordVRCNames(ctx, userID)
+	link, _ := r.WhitelistService.GetDiscordVRC(ctx, userID)
+	allowed := link != nil
+	var names []string
+	if link != nil {
+		names = []string{link.VRCDisplayName}
+	}
 	embed := buildWhitelistEmbed(userID, allowed, names)
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -243,18 +245,17 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	})
 }
 
-func (r *Router) handleWhitelistDeleteAll(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
+// 「削除」ボタン: この Discord ユーザーのリンクを物理削除
+func (r *Router) handleWhitelistDelete(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
 	ctx := context.Background()
-	err := r.WhitelistService.Remove(ctx, models.WhitelistPlatformDiscord, userID)
+	err := r.WhitelistService.RemoveDiscord(ctx, userID)
 
 	msg := "ホワイトリストから削除した。"
 	if err != nil {
-		msg = "内部エラーで削除できなかった。"
+		msg = "内部エラーで削除に失敗した。"
 	}
 
-	allowed := false
-	names := []string{}
-	embed := buildWhitelistEmbed(userID, allowed, names)
+	embed := buildWhitelistEmbed(userID, false, nil)
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
@@ -267,10 +268,15 @@ func (r *Router) handleWhitelistDeleteAll(s *discordgo.Session, i *discordgo.Int
 	})
 }
 
+// 「再表示」ボタン: 現在の状態を取り直してEmbed更新
 func (r *Router) handleWhitelistRefresh(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
 	ctx := context.Background()
-	allowed, _ := r.WhitelistService.IsAllowed(ctx, models.WhitelistPlatformDiscord, userID)
-	names, _ := r.WhitelistService.GetDiscordVRCNames(ctx, userID)
+	link, _ := r.WhitelistService.GetDiscordVRC(ctx, userID)
+	allowed := link != nil
+	var names []string
+	if link != nil {
+		names = []string{link.VRCDisplayName}
+	}
 	embed := buildWhitelistEmbed(userID, allowed, names)
 
 	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
