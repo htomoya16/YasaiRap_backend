@@ -195,10 +195,10 @@ Android版
 
 3. **ログインして 2FA を有効化**
    - Account Settings ページから Two-Factor Authentication (2FA) を有効にする。 
-   ![alt text](image.png)
+   ![alt text](/images/image.png)
    - Next を押し、Google Authenticator を起動し、表示された QR コードをスキャンする。
    - enter the key manually をクリックし、でてくる32桁の英数字を確認する。
-   ![alt text](image-1.png)
+   ![alt text](/images/image-1.png)
    通常、以下のような形式で表示されている：
    ```abcd efgh ijkl mnop qrst uvwx yz12 3456```
    - **空白を削除して1行にまとめ`.env` に設定**
@@ -227,11 +227,11 @@ VRChat API の認証情報（`VRCHAT_USERNAME`, `VRCHAT_PASSWORD`, `VRCHAT_TOTP_
 Discord 側から `/whitelist` コマンドを実行して、Bot とバックエンドが正常に連携しているか確認できる。
 
 1. **Discordサーバーで `/whitelist` コマンドを入力**
-   ![alt text](image-2.png)
+   ![alt text](/images/image-2.png)
 
 2. **Botの応答を確認**
-   ![alt text](image-3.png)
+   ![alt text](/images/image-3.png)
 
 3. **登録できるか確認**
    自分のVRChat名で登録できるか確認
-   ![alt text](image-4.png)
+   ![alt text](/images/image-4.png)
