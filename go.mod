@@ -4,13 +4,12 @@ go 1.25.1
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0
-	github.com/go-sql-driver/mysql v1.9.3
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/lib/pq v1.10.9
 	github.com/pquerna/otp v1.5.0
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect

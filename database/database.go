@@ -7,22 +7,23 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 func NewConnection() (*sql.DB, error) {
 	host := getEnvWithDefault("DB_HOST", "localhost")
-	port := getEnvWithDefault("DB_PORT", "3306")
+	port := getEnvWithDefault("DB_PORT", "5432")
 	user := mustEnv("DB_USER")
 	password := mustEnv("DB_PASSWORD")
 	dbname := getEnvWithDefault("DB_NAME", "yasairap")
+	sslmode := getEnvWithDefault("DB_SSLMODE", "disable")
 
-	// DSN生成 tcp接続
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci",
-		user, password, host, port, dbname)
+	// DSN生成 PostgreSQL接続
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		host, port, user, password, dbname, sslmode)
 
 	// 接続ハンドル作成
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
