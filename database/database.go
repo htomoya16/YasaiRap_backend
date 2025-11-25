@@ -7,22 +7,26 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func NewConnection() (*sql.DB, error) {
+	// 環境変数が未設定の場合のデフォルト値
 	host := getEnvWithDefault("DB_HOST", "localhost")
-	port := getEnvWithDefault("DB_PORT", "3306")
+	port := getEnvWithDefault("DB_PORT", "5432")
 	user := mustEnv("DB_USER")
 	password := mustEnv("DB_PASSWORD")
 	dbname := getEnvWithDefault("DB_NAME", "yasairap")
+	sslmode := getEnvWithDefault("DB_SSLMODE", "disable") // Heroku では require などに切り替え予定
 
 	// DSN生成 tcp接続
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=UTC&charset=utf8mb4&collation=utf8mb4_unicode_ci",
-		user, password, host, port, dbname)
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=UTC",
+		user, password, host, port, dbname, sslmode,
+	)
 
 	// 接続ハンドル作成
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}

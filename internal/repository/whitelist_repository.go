@@ -32,13 +32,14 @@ func (r *whitelistRepository) Upsert(ctx context.Context, u *models.WhitelistUse
 			vrc_display_name,
 			vrc_avatar_url,
 			note
-		) VALUES (?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			vrc_user_id      = VALUES(vrc_user_id),
-			vrc_display_name = VALUES(vrc_display_name),
-			vrc_avatar_url   = VALUES(vrc_avatar_url),
-			note             = VALUES(note),
-			updated_at       = CURRENT_TIMESTAMP(6);
+		) VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (discord_user_id) DO UPDATE
+		SET
+			vrc_user_id      = EXCLUDED.vrc_user_id,
+			vrc_display_name = EXCLUDED.vrc_display_name,
+			vrc_avatar_url   = EXCLUDED.vrc_avatar_url,
+			note             = EXCLUDED.note,
+			updated_at       = CURRENT_TIMESTAMP;
 	`
 	_, err := r.db.ExecContext(ctx, q,
 		u.DiscordUserID,
@@ -62,7 +63,7 @@ func (r *whitelistRepository) GetByDiscordID(ctx context.Context, discordID stri
 			created_at,
 			updated_at
 		FROM whitelist_users
-		WHERE discord_user_id = ?
+		WHERE discord_user_id = $1
 		LIMIT 1;
 	`
 	row := r.db.QueryRowContext(ctx, q, discordID)
@@ -98,7 +99,7 @@ func (r *whitelistRepository) GetByVRCUserID(ctx context.Context, vrcUserID stri
 			created_at,
 			updated_at
 		FROM whitelist_users
-		WHERE vrc_user_id = ?
+		WHERE vrc_user_id = $1
 		LIMIT 1;
 	`
 	row := r.db.QueryRowContext(ctx, q, vrcUserID)
@@ -123,7 +124,7 @@ func (r *whitelistRepository) GetByVRCUserID(ctx context.Context, vrcUserID stri
 }
 
 func (r *whitelistRepository) ExistsByDiscordID(ctx context.Context, discordID string) (bool, error) {
-	const q = `SELECT 1 FROM whitelist_users WHERE discord_user_id = ? LIMIT 1`
+	const q = `SELECT 1 FROM whitelist_users WHERE discord_user_id = $1 LIMIT 1`
 	var x int
 	err := r.db.QueryRowContext(ctx, q, discordID).Scan(&x)
 	if err == sql.ErrNoRows {
@@ -136,7 +137,7 @@ func (r *whitelistRepository) ExistsByDiscordID(ctx context.Context, discordID s
 }
 
 func (r *whitelistRepository) ExistsByVRCUserID(ctx context.Context, vrcUserID string) (bool, error) {
-	const q = `SELECT 1 FROM whitelist_users WHERE vrc_user_id = ? LIMIT 1`
+	const q = `SELECT 1 FROM whitelist_users WHERE vrc_user_id = $1 LIMIT 1`
 	var x int
 	err := r.db.QueryRowContext(ctx, q, vrcUserID).Scan(&x)
 	if err == sql.ErrNoRows {
@@ -149,7 +150,7 @@ func (r *whitelistRepository) ExistsByVRCUserID(ctx context.Context, vrcUserID s
 }
 
 func (r *whitelistRepository) RemoveByDiscordID(ctx context.Context, discordID string) error {
-	const q = `DELETE FROM whitelist_users WHERE discord_user_id = ?`
+	const q = `DELETE FROM whitelist_users WHERE discord_user_id = $1`
 	_, err := r.db.ExecContext(ctx, q, discordID)
 	return err
 }
