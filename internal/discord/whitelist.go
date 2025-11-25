@@ -173,9 +173,6 @@ func buildWhitelistEmbed(
 				Inline: true,
 			},
 		},
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: "※このパネルは自分にのみ表示される（Ephemeral）。",
-		},
 	}
 
 	// VRChatアバター画像（DBに保存された currentAvatarImageUrl）を大きめ表示
