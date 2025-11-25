@@ -1,7 +1,7 @@
 name: yasairap
 
 volumes:
-  mysql_data:
+  postgres_data:
   go_build_cache:   # dev の go build キャッシュ
   go_mod_cache:     # dev の go mod キャッシュ
 
@@ -10,26 +10,18 @@ networks:
     driver: bridge
 
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: yasairap_mysql
-    command: 
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --init-connect=SET NAMES utf8mb4
-      - --character-set-filesystem=utf8mb4
+  postgres:
+    image: postgres:16
+    container_name: yasairap_postgres
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      TZ: ${MYSQL_TZ:-UTC}
+      POSTGRES_USER: ${POSTGRES_USER:-yasairap_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yasairap_password}
+      POSTGRES_DB: ${POSTGRES_DB:-yasairap}
+      TZ: ${DB_TZ:-UTC}
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./config/mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - yasairap_network
 
@@ -41,7 +33,7 @@ services:
       target: prod
     container_name: yasairap_backend
     depends_on:
-      - mysql
+      - postgres
     environment:
       # Discord bot用
       DISCORD_TOKEN: ${DISCORD_TOKEN}
@@ -52,11 +44,11 @@ services:
       VRCHAT_USERNAME: ${VRCHAT_USERNAME}
       VRCHAT_PASSWORD: ${VRCHAT_PASSWORD}
       VRCHAT_TOTP_SECRET: ${VRCHAT_TOTP_SECRET}
-      DB_HOST: ${DB_HOST:-mysql}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${MYSQL_USER}
-      DB_PASSWORD: ${MYSQL_PASSWORD}
-      DB_NAME: ${MYSQL_DATABASE}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
       PORT: ${APP_PORT:-8080}
     ports:
       - "${APP_PORT:-8080}:8080"
@@ -71,7 +63,7 @@ services:
       target: dev
     container_name: yasairap_dev_backend
     depends_on:
-      - mysql
+      - postgres
     environment:
       # Discord bot用
       DISCORD_TOKEN: ${DISCORD_TOKEN}
@@ -82,11 +74,11 @@ services:
       VRCHAT_USERNAME: ${VRCHAT_USERNAME}
       VRCHAT_PASSWORD: ${VRCHAT_PASSWORD}
       VRCHAT_TOTP_SECRET: ${VRCHAT_TOTP_SECRET}
-      DB_HOST: ${DB_HOST:-mysql}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${MYSQL_USER}
-      DB_PASSWORD: ${MYSQL_PASSWORD}
-      DB_NAME: ${MYSQL_DATABASE}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
       PORT: ${APP_PORT:-8080}
     ports:
       - "${APP_PORT:-8080}:8080"
