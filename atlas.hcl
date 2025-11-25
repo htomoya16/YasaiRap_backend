@@ -15,3 +15,20 @@ env "local" {
         "atlas_schema_revisions",
     ]
 }
+env "heroku" {
+    src = "file://schema"
+
+    migration {
+        dir    = "file://migrations"
+        format = atlas
+    }
+
+    # Heroku の DATABASE_URL を使う
+    url = getenv("DATABASE_URL")
+
+    # _heroku スキーマは Atlas の対象外にする
+    exclude = [
+        "atlas_schema_revisions",
+        "_heroku",
+    ]
+}

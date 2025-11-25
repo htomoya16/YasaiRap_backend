@@ -11,19 +11,25 @@ import (
 )
 
 func NewConnection() (*sql.DB, error) {
-	// 環境変数が未設定の場合のデフォルト値
-	host := getEnvWithDefault("DB_HOST", "localhost")
-	port := getEnvWithDefault("DB_PORT", "5432")
-	user := mustEnv("DB_USER")
-	password := mustEnv("DB_PASSWORD")
-	dbname := getEnvWithDefault("DB_NAME", "yasairap")
-	sslmode := getEnvWithDefault("DB_SSLMODE", "disable") // Heroku では require などに切り替え予定
+	//Heroku Postgres
+	dsn := os.Getenv("DATABASE_URL")
+	//自分の docker-compose の Postgres
+	if dsn == "" {
+		// 環境変数が未設定の場合のデフォルト値
+		host := getEnvWithDefault("DB_HOST", "localhost")
+		port := getEnvWithDefault("DB_PORT", "5432")
+		user := mustEnv("DB_USER")
+		password := mustEnv("DB_PASSWORD")
+		dbname := getEnvWithDefault("DB_NAME", "yasairap")
+		sslmode := getEnvWithDefault("DB_SSLMODE", "disable") // Heroku では require などに切り替え予定
 
-	// DSN生成 tcp接続
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=UTC",
-		user, password, host, port, dbname, sslmode,
-	)
+		// DSN生成 tcp接続
+		dsn = fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=UTC",
+			user, password, host, port, dbname, sslmode,
+		)
+	}
+	fmt.Println("Using DSN:", dsn)
 
 	// 接続ハンドル作成
 	db, err := sql.Open("pgx", dsn)
