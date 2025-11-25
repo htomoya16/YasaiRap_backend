@@ -4,6 +4,7 @@ import (
 	"backend/internal/service"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 
@@ -266,7 +267,7 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 	case errors.Is(err, service.ErrInvalidArgument):
 		msg = "VRChat名が空か不正。もう一度入力してくれ。"
 	case errors.Is(err, service.ErrNoExactMatch):
-		msg = "その VRChat名に完全一致するユーザーが見つからなかった。"
+		msg = "その VRChat名のユーザーはいません。"
 	case errors.Is(err, service.ErrMultipleExactMatch):
 		msg = "同じ VRChat名のユーザーが複数いるため特定できない。"
 	case errors.Is(err, service.ErrAlreadyExists):
@@ -305,6 +306,30 @@ func (r *Router) handleWhitelistModalSubmit(s *discordgo.Session, i *discordgo.I
 			Flags:      discordgo.MessageFlagsEphemeral,
 		},
 	})
+
+	// 登録・更新が成功したときは、同じパネルを公開メッセージとして流す
+	if err == nil {
+		mention := "<@" + discordID + ">"
+		publicMsg := ""
+		if created {
+			publicMsg = fmt.Sprintf("✅ %s が VRChat アカウント「%s」でホワイトリストに登録された。", mention, vrcName)
+		} else {
+			publicMsg = fmt.Sprintf("♻️ %s のホワイトリスト情報が更新された。（VRChat: 「%s」）", mention, vrcName)
+		}
+
+		_, ferr := s.FollowupMessageCreate(i.Interaction, false, &discordgo.WebhookParams{
+			Content: publicMsg,
+			Embeds:  []*discordgo.MessageEmbed{embed}, // /whitelist パネルと同じ内容を公開
+			AllowedMentions: &discordgo.MessageAllowedMentions{
+				Parse: []discordgo.AllowedMentionType{
+					discordgo.AllowedMentionTypeUsers, // ユーザーだけメンション
+				},
+			},
+		})
+		if ferr != nil {
+			log.Printf("failed to send public whitelist panel: %+v", ferr)
+		}
+	}
 }
 
 // 「削除」ボタン: この Discord ユーザーのリンクを物理削除
