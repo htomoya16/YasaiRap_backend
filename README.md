@@ -3,6 +3,17 @@
 **YasaiRap Backend** は、VRChat 上で開催される大会・イベントを Discord から自動管理するためのバックエンドシステムである。  
 Discord Bot を介して出場登録、試合結果の記録、ホワイトリスト生成を行い、VRChat ワールドにデータを連携する。
 
+
+## インストール
+https://discord.com/oauth2/authorize?client_id=1435610017154990210&permissions=2147568640&integration_type=0&scope=bot+applications.commands
+
+上記のURLから任意のサーバーに招待してください。
+コマンドは現在以下の２つが使えます。
+
+```
+/whitelist
+/ping
+```
 ---
 
 ## ⚙️ 技術スタック
